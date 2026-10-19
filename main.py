@@ -2,15 +2,16 @@ import asyncio
 import logging
 import random
 import string
+import os
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Aapka Bot Token aur Admin ID pehle se added hai
+# Aapka Bot Token aur Admin ID
 BOT_TOKEN = "8916721054:AAFSTYY9zpAe2xm1MNdqJjLW6UNC6-mQmTQ"
 ADMIN_ID = 7211171229
 
-# Temporary memory mein keys store karne ke liye
 GENERATED_KEYS = set()
 USED_KEYS = set()
 
@@ -18,7 +19,6 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# Forwarding Panel Menu
 def get_forwarding_panel_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Set Source(s) 📥", callback_data="set_sources"),
@@ -30,7 +30,6 @@ def get_forwarding_panel_menu():
         [InlineKeyboardButton(text="⬅️ Back to Main Menu", callback_data="main_menu")]
     ])
 
-# Main Menu (Admin ke liye Admin Key Panel ka button dikhega)
 def get_main_menu(is_admin=False):
     buttons = [
         [InlineKeyboardButton(text="⚙️ Forwarding Panel", callback_data="forwarding_panel")],
@@ -43,7 +42,6 @@ def get_main_menu(is_admin=False):
         buttons.insert(0, [InlineKeyboardButton(text="🔑 Admin Key Panel", callback_data="admin_panel")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-# /start command handler
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     is_admin = (message.from_user.id == ADMIN_ID)
@@ -53,7 +51,6 @@ async def cmd_start(message: types.Message):
     )
     await message.answer(welcome_text, reply_markup=get_main_menu(is_admin=is_admin), parse_mode="Markdown")
 
-# Callback queries handler (Buttons ke liye)
 @dp.callback_query()
 async def handle_callbacks(callback: types.CallbackQuery):
     data = callback.data
@@ -126,9 +123,22 @@ async def handle_callbacks(callback: types.CallbackQuery):
     else:
         await callback.answer("Feature under development!", show_alert=True)
 
-# Main function
+# Render port requirement poora karne ke liye web server
+async def handle_web(request):
+    return web.Response(text="Bot is running!")
+
+async def web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_web)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
 async def main():
-    print("Bot is running successfully...")
+    await web_server()
+    print("Bot and Web Server are running successfully...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
